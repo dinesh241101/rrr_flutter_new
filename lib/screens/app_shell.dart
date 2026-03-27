@@ -54,6 +54,13 @@ class _AppShellState extends State<AppShell> {
     }
     _bootstrapped = true;
 
+    final bool appOpenShown = await AdsService.instance.showAppOpenIfAvailable(
+      placement: 'app_open_bootstrap',
+    );
+    if (mounted && appOpenShown) {
+      context.read<SessionProvider>().trackAdSeen();
+    }
+
     await _notificationsService.initialize();
     await _notificationsService.scheduleDailyReminder();
     if (!mounted) {
@@ -104,41 +111,53 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Consumer2<NavigationProvider, WalletProvider>(
-      builder: (BuildContext context, NavigationProvider nav, WalletProvider wallet, _) {
-        return Scaffold(
-          drawer: const AppDrawer(),
-          appBar: AppBar(
-            title: Text(_titles[nav.currentTab]),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: CoinBalanceChip(coins: wallet.coins),
+      builder:
+          (
+            BuildContext context,
+            NavigationProvider nav,
+            WalletProvider wallet,
+            _,
+          ) {
+            return Scaffold(
+              drawer: const AppDrawer(),
+              appBar: AppBar(
+                title: Text(_titles[nav.currentTab]),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: CoinBalanceChip(coins: wallet.coins),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.account_circle),
+                    onPressed: () {},
+                  ),
+                ],
               ),
-              IconButton(
-                icon: const Icon(Icons.account_circle),
-                onPressed: () {},
+              body: IndexedStack(index: nav.currentTab, children: _tabs),
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: nav.currentTab,
+                onTap: _onTabSelected,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.sports_esports),
+                    label: 'Games',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.emoji_events),
+                    label: 'Tournament',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.quiz),
+                    label: 'Quizistan',
+                  ),
+                ],
               ),
-            ],
-          ),
-          body: IndexedStack(index: nav.currentTab, children: _tabs),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: nav.currentTab,
-            onTap: _onTabSelected,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.sports_esports),
-                label: 'Games',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.emoji_events),
-                label: 'Tournament',
-              ),
-              BottomNavigationBarItem(icon: Icon(Icons.quiz), label: 'Quizistan'),
-            ],
-          ),
-        );
-      },
+            );
+          },
     );
   }
 }
