@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rrr_flutter_new/core/constants/app_assets.dart';
 import 'package:rrr_flutter_new/core/constants/app_strings.dart';
 import 'package:rrr_flutter_new/providers/navigation_provider.dart';
 import 'package:rrr_flutter_new/providers/session_provider.dart';
@@ -83,7 +84,7 @@ class _AppShellState extends State<AppShell> {
 
     await showDialog<void>(
       context: context,
-      builder: (_) => DailyBonusDialog(amount: bonus),
+      builder: (_) => const DailyBonusDialog(),
     );
   }
 
@@ -121,6 +122,15 @@ class _AppShellState extends State<AppShell> {
             return Scaffold(
               drawer: const AppDrawer(),
               appBar: AppBar(
+                leading: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Image.asset(
+                    AppAssets.appLogo,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.sports_esports),
+                  ),
+                ),
                 title: Text(_titles[nav.currentTab]),
                 actions: [
                   Padding(
@@ -140,7 +150,7 @@ class _AppShellState extends State<AppShell> {
                 items: const [
                   BottomNavigationBarItem(
                     icon: Icon(Icons.home),
-                    label: 'Home',
+                    label: 'Profile',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.sports_esports),

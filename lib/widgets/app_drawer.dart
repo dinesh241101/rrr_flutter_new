@@ -14,7 +14,7 @@ class AppDrawer extends StatelessWidget {
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Text(
-                'Run-Reward_Rift',
+                'Run Reward Rift',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,

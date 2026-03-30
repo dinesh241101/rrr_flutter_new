@@ -1,8 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="rrr_flutter_new"
+        android:label="Run Reward Rift"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Required by Google Mobile Ads SDK; replace with your production App ID before release. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

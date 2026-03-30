@@ -147,7 +147,6 @@ class AdsService {
     AppOpenAd.load(
       adUnitId: _appOpenAdUnitId,
       request: const AdRequest(),
-      orientation: AppOpenAd.orientationPortrait,
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (AppOpenAd ad) {
           _isLoadingAppOpenAd = false;
