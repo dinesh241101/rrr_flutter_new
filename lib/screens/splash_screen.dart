@@ -156,7 +156,7 @@ class _SplashScreenState extends State<SplashScreen>
           /// 🔥 PARTICLE LAYER (ULTRA SMOOTH)
           AnimatedBuilder(
             animation: _particleController,
-            builder: (_, __) {
+            builder: (_, _) {
               return CustomPaint(
                 painter: ParticlePainter(particles),
                 size: Size.infinite,
@@ -211,7 +211,7 @@ class _SplashScreenState extends State<SplashScreen>
                           child: Image.asset(
                             AppAssets.appLogo,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            errorBuilder: (_, _, _) => const Icon(
                               Icons.sports_esports,
                               size: 50,
                               color: Colors.blueAccent,

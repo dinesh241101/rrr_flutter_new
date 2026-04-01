@@ -127,8 +127,7 @@ class _AppShellState extends State<AppShell> {
                   child: Image.asset(
                     AppAssets.appLogo,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.sports_esports),
+                    errorBuilder: (_, _, _) => const Icon(Icons.sports_esports),
                   ),
                 ),
                 title: Text(_titles[nav.currentTab]),
