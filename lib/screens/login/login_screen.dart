@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:rrr_flutter_new/core/constants/app_assets.dart';
 import 'package:rrr_flutter_new/core/constants/app_strings.dart';
 import 'package:rrr_flutter_new/screens/app_shell.dart';
+import 'package:rrr_flutter_new/screens/rrr_intro_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,181 +12,244 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+class _LoginScreenState extends State<LoginScreen>
+    with TickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final email = TextEditingController();
+  final password = TextEditingController();
 
-  bool _isPasswordHidden = true;
-  bool _isLoggingIn = false;
+  bool hidePassword = true;
+  bool loading = false;
 
-  Future<void> _login() async {
-    if (_isLoggingIn || !_formKey.currentState!.validate()) {
-      return;
-    }
+  late AnimationController particleController;
+  List<_Particle> particles = List.generate(35, (_) => _Particle());
 
-    setState(() {
-      _isLoggingIn = true;
-    });
-
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    if (!mounted) {
-      return;
-    }
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const AppShell()),
-    );
-  }
-
-  void _continueAsGuest() {
-    if (_isLoggingIn) {
-      return;
-    }
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const AppShell()),
-    );
+  @override
+  void initState() {
+    super.initState();
+    particleController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    particleController.dispose();
+    email.dispose();
+    password.dispose();
     super.dispose();
+  }
+
+  void _login() async {
+    if (!_formKey.currentState!.validate() || loading) return;
+
+    setState(() => loading = true);
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const AppShell()),
+    );
+  }
+
+  void _guest() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const RRRIntroScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 84,
-                            height: 84,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            padding: const EdgeInsets.all(12),
-                            child: Image.asset(
-                              AppAssets.appLogo,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) =>
-                                  const Icon(Icons.apps, size: 42),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          AppStrings.appName,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Login to continue',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                        ),
-                        const SizedBox(height: 24),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
-                          ),
-                          validator: (String? value) {
-                            final String input = value?.trim() ?? '';
-                            if (input.isEmpty) {
-                              return 'Email is required';
-                            }
-                            if (!input.contains('@') || !input.contains('.')) {
-                              return 'Enter a valid email';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _isPasswordHidden,
-                          autofillHints: const [AutofillHints.password],
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isPasswordHidden
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isPasswordHidden = !_isPasswordHidden;
-                                });
-                              },
-                            ),
-                          ),
-                          validator: (String? value) {
-                            final String input = value?.trim() ?? '';
-                            if (input.isEmpty) {
-                              return 'Password is required';
-                            }
-                            if (input.length < 6) {
-                              return 'Use at least 6 characters';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 18),
-                        FilledButton(
-                          onPressed: _isLoggingIn ? null : _login,
-                          child: _isLoggingIn
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Login'),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _continueAsGuest,
-                          child: const Text('Continue as guest'),
-                        ),
-                      ],
+      body: Stack(
+        children: [
+          /// 🌌 BACKGROUND
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF050816), Color(0xFF0B1F3A)],
+              ),
+            ),
+          ),
+
+          /// ✨ PARTICLES
+          AnimatedBuilder(
+            animation: particleController,
+            builder: (_, _) {
+              return CustomPaint(
+                painter: _ParticlePainter(particles),
+                size: Size.infinite,
+              );
+            },
+          ),
+
+          /// UI
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 420),
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.black.withOpacity(0.6),
+                  border: Border.all(color: Colors.white12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blueAccent.withOpacity(0.3),
+                      blurRadius: 25,
                     ),
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      /// LOGO
+                      Container(
+                        width: 90,
+                        height: 90,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.blueAccent),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blueAccent.withOpacity(0.6),
+                              blurRadius: 20,
+                            ),
+                          ],
+                        ),
+                        child: Image.asset(AppAssets.appLogo),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      Text(
+                        AppStrings.appName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      _input(email, "Email", Icons.email),
+                      const SizedBox(height: 12),
+                      _input(password, "Password", Icons.lock, true),
+
+                      const SizedBox(height: 20),
+
+                      /// LOGIN
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: loading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text("LOGIN"),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      /// GUEST BUTTON
+                      TextButton(
+                        onPressed: _guest,
+                        child: const Text(
+                          "Continue as Guest",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
+
+  Widget _input(
+    TextEditingController c,
+    String hint,
+    IconData icon, [
+    bool pass = false,
+  ]) {
+    return TextFormField(
+      controller: c,
+      obscureText: pass ? hidePassword : false,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.white54),
+        prefixIcon: Icon(icon, color: Colors.blueAccent),
+        suffixIcon: pass
+            ? IconButton(
+                icon: Icon(
+                  hidePassword ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.white,
+                ),
+                onPressed: () {
+                  setState(() => hidePassword = !hidePassword);
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
+    );
+  }
+}
+
+/// PARTICLES
+class _Particle {
+  double x = Random().nextDouble();
+  double y = Random().nextDouble();
+  double speed = Random().nextDouble() * 0.002 + 0.001;
+
+  void update() {
+    y -= speed;
+    if (y < 0) {
+      y = 1;
+      x = Random().nextDouble();
+    }
+  }
+}
+
+class _ParticlePainter extends CustomPainter {
+  final List<_Particle> particles;
+
+  _ParticlePainter(this.particles);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+
+    for (var p in particles) {
+      p.update();
+      paint.color = Colors.blueAccent.withOpacity(0.6);
+      canvas.drawCircle(Offset(p.x * size.width, p.y * size.height), 2, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

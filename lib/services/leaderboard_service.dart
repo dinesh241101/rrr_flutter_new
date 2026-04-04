@@ -17,6 +17,7 @@ class MockLeaderboardService implements LeaderboardService {
       rank: index + 1,
       playerName: 'Player_${index + 1}',
       score: 2000 - (index * 53),
+      timestamp: DateTime.now().subtract(Duration(days: index)),
     ),
   );
 
@@ -44,7 +45,12 @@ class MockLeaderboardService implements LeaderboardService {
       );
     } else {
       _entries.add(
-        LeaderboardEntry(rank: _entries.length + 1, playerName: playerName, score: boostedScore),
+        LeaderboardEntry(
+          rank: _entries.length + 1,
+          playerName: playerName,
+          score: boostedScore,
+          timestamp: DateTime.now(),
+        ),
       );
     }
 
@@ -53,7 +59,9 @@ class MockLeaderboardService implements LeaderboardService {
 
   List<LeaderboardEntry> _sortedWithRanks() {
     final List<LeaderboardEntry> sorted = List<LeaderboardEntry>.from(_entries)
-      ..sort((LeaderboardEntry a, LeaderboardEntry b) => b.score.compareTo(a.score));
+      ..sort(
+        (LeaderboardEntry a, LeaderboardEntry b) => b.score.compareTo(a.score),
+      );
 
     return sorted
         .asMap()
