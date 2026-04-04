@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rrr_flutter_new/core/constants/app_assets.dart';
+// import 'package:rrr_flutter_new/core/constants/app_assets.dart';
 import 'package:rrr_flutter_new/core/constants/app_strings.dart';
 import 'package:rrr_flutter_new/providers/navigation_provider.dart';
 import 'package:rrr_flutter_new/providers/session_provider.dart';
 import 'package:rrr_flutter_new/providers/wallet_provider.dart';
+import 'package:rrr_flutter_new/screens/coins_transaction_screen.dart';
 import 'package:rrr_flutter_new/screens/games/games_screen.dart';
 import 'package:rrr_flutter_new/screens/home/home_screen.dart';
+import 'package:rrr_flutter_new/screens/profile/profile_screen.dart';
 import 'package:rrr_flutter_new/screens/quizistan/quizistan_screen.dart';
 import 'package:rrr_flutter_new/screens/tournament/tournament_screen.dart';
 import 'package:rrr_flutter_new/services/ads_service.dart';
@@ -96,7 +98,7 @@ class _AppShellState extends State<AppShell> {
     nav.setTab(index);
 
     _tabTransitionCount += 1;
-    if (_tabTransitionCount % 2 != 0) {
+    if (_tabTransitionCount % 3 != 0) {
       return;
     }
 
@@ -122,23 +124,42 @@ class _AppShellState extends State<AppShell> {
             return Scaffold(
               drawer: const AppDrawer(),
               appBar: AppBar(
-                leading: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Image.asset(
-                    AppAssets.appLogo,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(Icons.sports_esports),
-                  ),
+                leading: Builder(
+                  builder: (BuildContext context) {
+                    return IconButton(
+                      icon: const Icon(Icons.menu),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                      tooltip: 'Open Menu',
+                    );
+                  },
                 ),
                 title: Text(_titles[nav.currentTab]),
                 actions: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: CoinBalanceChip(coins: wallet.coins),
+                  GestureDetector(
+                    onTap: () {
+                      final userId =
+                          'user_${DateTime.now().millisecondsSinceEpoch}';
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              CoinsTransactionScreen(userId: userId),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: CoinBalanceChip(coins: wallet.coins),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.account_circle),
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ProfileScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
