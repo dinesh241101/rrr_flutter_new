@@ -2,7 +2,8 @@
     <application
         android:label="Run Reward Rift"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
         <!-- Required by Google Mobile Ads SDK; replace with your production App ID before release. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"

@@ -41,6 +41,32 @@ class GameScore {
   };
 }
 
+class UserDetails {
+  final String id;
+  final String name;
+  final String email;
+  final String? phoneNumber;
+  final String? avatarUrl;
+
+  UserDetails({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.phoneNumber,
+    this.avatarUrl,
+  });
+
+  factory UserDetails.fromJson(Map<String, dynamic> json) {
+    return UserDetails(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      email: json['email'] as String,
+      avatarUrl: json['avatar_url'] as String?,
+      phoneNumber: json['phone_number'] as String?,
+    );
+  }
+}
+
 // Game Config Model
 class GameConfig {
   final String id;
@@ -223,6 +249,35 @@ class QuizistanAttempt {
       streakCount: json['streak_count'] as int? ?? 0,
       tierName: json['tier_name'] as String?,
       completedAt: DateTime.parse(json['completed_at'] as String),
+    );
+  }
+}
+
+class Usercoins {
+  final String userId;
+  final int balance;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int spentCoins;
+  final int earnedCoins;
+
+  Usercoins({
+    required this.userId,
+    required this.balance,
+    required this.createdAt,
+    required this.updatedAt,
+    required this.spentCoins,
+    required this.earnedCoins,
+  });
+
+  factory Usercoins.fromJson(Map<String, dynamic> json) {
+    return Usercoins(
+      userId: json['user_id'] as String,
+      balance: json['balance'] as int? ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      spentCoins: json['spent_coins'] as int? ?? 0,
+      earnedCoins: json['earned_coins'] as int? ?? 0,
     );
   }
 }

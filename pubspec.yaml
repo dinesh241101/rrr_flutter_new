@@ -36,26 +36,24 @@ dependencies:
 
   confetti: ^0.7.0
   shared_preferences: ^2.2.2
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   provider: ^6.0.5
-  google_mobile_ads: ^6.0.0
+  google_mobile_ads: ^7.0.0
   audioplayers: ^5.2.1
   fluttertoast: ^8.2.1
   url_launcher: ^6.1.7
   in_app_review: ^2.0.4
   app_tracking_transparency: ^2.0.0
-  vibration: ^1.8.4
-  device_info_plus: ^11.5.0
-  
-  # Supabase for backend
-  supabase_flutter: ^1.10.0
-  
-  # Responsive design
-  responsive_sizer: ^3.2.0
 
+  vibration: ^2.0.0
+  device_info_plus: ^11.5.0
+
+  sign_in_with_apple: ^6.1.0
+  supabase_flutter: ^2.12.2
+  connectivity_plus: ^4.0.0
+  chucker_flutter: ^1.6.0
+
+  responsive_sizer: ^3.2.0
 
 
 

@@ -5,6 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:rrr_flutter_new/models/game_mode.dart';
 import 'package:rrr_flutter_new/providers/session_provider.dart';
 import 'package:rrr_flutter_new/providers/wallet_provider.dart';
+import 'package:rrr_flutter_new/screens/games/flappy_bird_screen.dart';
+import 'package:rrr_flutter_new/screens/games/game_2048_screen.dart';
+import 'package:rrr_flutter_new/screens/games/snake_game_screen.dart';
+import 'package:rrr_flutter_new/screens/games/sudoku_game_screen.dart';
+import 'package:rrr_flutter_new/screens/games/teen_patti_screen.dart';
+import 'package:rrr_flutter_new/screens/games/mines_blast_screen.dart';
+import 'package:rrr_flutter_new/screens/games/tic_tac_toe_screen.dart';
 import 'package:rrr_flutter_new/services/ads_service.dart';
 
 class GamePlayScreen extends StatefulWidget {
@@ -62,6 +69,34 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Route to specific game screens
+    switch (widget.game.id) {
+      case 'teen_patti':
+        return const TeenPattiScreen();
+      case 'mines_blast':
+        return const MinesBlastScreen();
+
+      case 'flappy_bird':
+        return const FlappyBirdScreen();
+
+      case 'snake_game':
+        return const SnakeGameScreen();
+
+      case 'sudoku_game':
+        return const SudokuGameScreen();
+
+      case 'tic_tac_toe':
+        return const TicTacToeScreen();
+
+      case 'game_2048':
+        return const Game2048Screen();
+
+      default:
+        return _buildPlaceholderGame();
+    }
+  }
+
+  Widget _buildPlaceholderGame() {
     return Scaffold(
       appBar: AppBar(title: Text(widget.game.name)),
       body: Padding(

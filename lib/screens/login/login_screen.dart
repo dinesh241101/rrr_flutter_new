@@ -1,12 +1,32 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:rrr_flutter_new/core/constants/app_assets.dart';
 import 'package:rrr_flutter_new/core/constants/app_strings.dart';
+import 'package:rrr_flutter_new/core/neon_theme.dart';
 import 'package:rrr_flutter_new/screens/app_shell.dart';
-import 'package:rrr_flutter_new/screens/rrr_intro_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  static const String _lastShownKey = "login_last_shown";
+
+  /// 🔥 CHECK IF LOGIN SHOULD SHOW
+  static Future<bool> shouldShowLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final last = prefs.getInt(_lastShownKey);
+
+    if (last == null) return true;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return (now - last) > 24 * 60 * 60 * 1000;
+  }
+
+  static Future<void> markShown() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_lastShownKey, DateTime.now().millisecondsSinceEpoch);
+  }
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -15,18 +35,23 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final email = TextEditingController();
-  final password = TextEditingController();
+
+  final emailController = TextEditingController();
+  final mobileController = TextEditingController();
+  final passwordController = TextEditingController();
+  final nameController = TextEditingController();
 
   bool hidePassword = true;
   bool loading = false;
+  bool isSignUp = false;
 
   late AnimationController particleController;
-  List<_Particle> particles = List.generate(35, (_) => _Particle());
+  List<_Star> stars = List.generate(40, (_) => _Star());
 
   @override
   void initState() {
     super.initState();
+
     particleController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 20),
@@ -36,30 +61,74 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     particleController.dispose();
-    email.dispose();
-    password.dispose();
+    emailController.dispose();
+    mobileController.dispose();
+    passwordController.dispose();
+    nameController.dispose();
     super.dispose();
   }
 
-  void _login() async {
+  Future<void> _handleAuth() async {
     if (!_formKey.currentState!.validate() || loading) return;
 
     setState(() => loading = true);
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final supabase = Supabase.instance.client;
 
-    if (!mounted) return;
+      final email = emailController.text.isNotEmpty
+          ? emailController.text.trim()
+          : "${mobileController.text}@rrr.app";
+
+      final password = passwordController.text;
+
+      if (isSignUp) {
+        /// 🔥 SIGNUP → MOBILE REQUIRED
+        if (mobileController.text.isEmpty) {
+          throw "Mobile number is required";
+        }
+
+        await supabase.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'username': nameController.text,
+            'mobile_number': mobileController.text,
+          },
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Signup success. Please login")),
+        );
+
+        setState(() => isSignUp = false);
+      } else {
+        /// LOGIN
+        await supabase.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+
+        await LoginScreen.markShown();
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AppShell()),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$e")));
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  void _guest() async {
+    await LoginScreen.markShown();
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const AppShell()),
-    );
-  }
-
-  void _guest() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const RRRIntroScreen()),
     );
   }
 
@@ -72,17 +141,17 @@ class _LoginScreenState extends State<LoginScreen>
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF050816), Color(0xFF0B1F3A)],
+                colors: [NeonTheme.darkBg, NeonTheme.darkBg2],
               ),
             ),
           ),
 
-          /// ✨ PARTICLES
+          /// ⭐ FALLING STARS
           AnimatedBuilder(
             animation: particleController,
-            builder: (_, _) {
+            builder: (_, __) {
               return CustomPaint(
-                painter: _ParticlePainter(particles),
+                painter: _StarPainter(stars),
                 size: Size.infinite,
               );
             },
@@ -94,84 +163,68 @@ class _LoginScreenState extends State<LoginScreen>
               padding: const EdgeInsets.all(20),
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 420),
-                padding: const EdgeInsets.all(22),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  color: Colors.black.withOpacity(0.6),
-                  border: Border.all(color: Colors.white12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blueAccent.withOpacity(0.3),
-                      blurRadius: 25,
-                    ),
-                  ],
+                  color: NeonTheme.darkCard,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: NeonTheme.neonCyan),
                 ),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
                       /// LOGO
-                      Container(
-                        width: 90,
-                        height: 90,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.blueAccent),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blueAccent.withOpacity(0.6),
-                              blurRadius: 20,
-                            ),
-                          ],
-                        ),
-                        child: Image.asset(AppAssets.appLogo),
-                      ),
+                      Image.asset(AppAssets.appLogo, height: 80),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
                       Text(
-                        AppStrings.appName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        isSignUp ? "Create Account" : "Welcome Back",
+                        style: const TextStyle(color: Colors.white),
                       ),
 
                       const SizedBox(height: 20),
 
-                      _input(email, "Email", Icons.email),
-                      const SizedBox(height: 12),
-                      _input(password, "Password", Icons.lock, true),
+                      /// NAME
+                      if (isSignUp) _input(nameController, "Name"),
+
+                      /// MOBILE (MANDATORY FOR SIGNUP)
+                      _input(mobileController, "Mobile Number"),
+
+                      /// EMAIL (OPTIONAL)
+                      if (isSignUp) _input(emailController, "Email (Optional)"),
+
+                      /// PASSWORD
+                      _input(passwordController, "Password", isPassword: true),
 
                       const SizedBox(height: 20),
 
-                      /// LOGIN
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: loading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                )
-                              : const Text("LOGIN"),
-                        ),
+                      /// BUTTON
+                      ElevatedButton(
+                        onPressed: _handleAuth,
+                        child: loading
+                            ? const CircularProgressIndicator()
+                            : Text(isSignUp ? "SIGN UP" : "LOGIN"),
                       ),
 
                       const SizedBox(height: 10),
 
-                      /// GUEST BUTTON
+                      TextButton(
+                        onPressed: () {
+                          setState(() => isSignUp = !isSignUp);
+                        },
+                        child: Text(
+                          isSignUp ? "Login" : "Create Account",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+
+                      /// GUEST
                       TextButton(
                         onPressed: _guest,
                         child: const Text(
                           "Continue as Guest",
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(color: Colors.blueAccent),
                         ),
                       ),
                     ],
@@ -187,66 +240,53 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _input(
     TextEditingController c,
-    String hint,
-    IconData icon, [
-    bool pass = false,
-  ]) {
-    return TextFormField(
-      controller: c,
-      obscureText: pass ? hidePassword : false,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
-        prefixIcon: Icon(icon, color: Colors.blueAccent),
-        suffixIcon: pass
-            ? IconButton(
-                icon: Icon(
-                  hidePassword ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  setState(() => hidePassword = !hidePassword);
-                },
-              )
-            : null,
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    String hint, {
+    bool isPassword = false,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: c,
+        obscureText: isPassword ? hidePassword : false,
+        decoration: InputDecoration(hintText: hint),
+        validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
       ),
-      validator: (v) => (v == null || v.isEmpty) ? "Required" : null,
     );
   }
 }
 
-/// PARTICLES
-class _Particle {
+/// ⭐ STAR PARTICLES
+class _Star {
   double x = Random().nextDouble();
   double y = Random().nextDouble();
-  double speed = Random().nextDouble() * 0.002 + 0.001;
+  double speed = Random().nextDouble() * 0.005 + 0.002;
 
   void update() {
-    y -= speed;
-    if (y < 0) {
-      y = 1;
+    y += speed;
+    if (y > 1) {
+      y = 0;
       x = Random().nextDouble();
     }
   }
 }
 
-class _ParticlePainter extends CustomPainter {
-  final List<_Particle> particles;
+class _StarPainter extends CustomPainter {
+  final List<_Star> stars;
 
-  _ParticlePainter(this.particles);
+  _StarPainter(this.stars);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint();
 
-    for (var p in particles) {
-      p.update();
+    for (var s in stars) {
+      s.update();
       paint.color = Colors.blueAccent.withOpacity(0.6);
-      canvas.drawCircle(Offset(p.x * size.width, p.y * size.height), 2, paint);
+      canvas.drawCircle(
+        Offset(s.x * size.width, s.y * size.height),
+        1.5,
+        paint,
+      );
     }
   }
 

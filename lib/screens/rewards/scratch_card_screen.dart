@@ -55,46 +55,57 @@ class _ScratchCardScreenState extends State<ScratchCardScreen> {
   Future<void> _claimReward() async {
     if (selectedReward == null) return;
 
-    // Show rewarded ad
-    final adsService = AdsService.instance;
-    final adReward = await adsService.showScratchCardRewarded(
-      placement: 'scratch_card_bonus',
-    );
-
-    if (!mounted) return;
-
-    // Record the reward claim
-    final profileProvider = context.read<ProfileProvider>();
-    if (profileProvider.isLoggedIn) {
-      final totalReward = selectedReward!.coinReward + (adReward ?? 0);
-      final success = await WheelRewardsRepository.submitRewardClaim(
-        userId: profileProvider.profile!.id,
-        rewardId: selectedReward!.id,
-        coinsEarned: totalReward,
-        source: 'scratch_card',
+    try {
+      // Show rewarded ad
+      final adsService = AdsService.instance;
+      final adReward = await adsService.showScratchCardRewarded(
+        placement: 'scratch_card_bonus',
       );
 
-      if (success) {
-        // Update wallet
-        context.read<WalletProvider>().addCoins(
-          amount: totalReward,
-          source: 'Scratch Card',
+      if (!mounted) return;
+
+      // Record the reward claim
+      final profileProvider = context.read<ProfileProvider>();
+      if (profileProvider.isLoggedIn) {
+        final totalReward = selectedReward!.coinReward + (adReward ?? 0);
+        final success = await WheelRewardsRepository.submitRewardClaim(
+          userId: profileProvider.profile!.id,
+          rewardId: selectedReward!.id,
+          coinsEarned: totalReward,
+          source: 'scratch_card',
         );
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Congratulations! You earned $totalReward coins!'),
-              backgroundColor: Colors.greenAccent,
-            ),
+        if (success) {
+          // Update wallet
+          context.read<WalletProvider>().addCoins(
+            amount: totalReward,
+            source: 'Scratch Card',
           );
-        }
 
-        // Prepare next card after a delay
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) {
-          _prepareNewCard();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Congratulations! You earned $totalReward coins!',
+                ),
+                backgroundColor: Colors.greenAccent,
+              ),
+            );
+          }
+
+          // Prepare next card after a delay
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) {
+            _prepareNewCard();
+          }
         }
+      }
+    } catch (e) {
+      debugPrint('Error claiming reward: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error claiming reward: ${e.toString()}')),
+        );
       }
     }
   }

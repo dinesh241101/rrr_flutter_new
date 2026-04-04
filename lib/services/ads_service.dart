@@ -24,6 +24,14 @@ class AdsService {
   int _interstitialShown = 0;
   int _rewardedShown = 0;
   bool _sdkInitialized = false;
+  bool _adsDisabled = false; // Disable ads if loading fails repeatedly
+  int _appOpenAdFailures = 0;
+  int _interstitialAdFailures = 0;
+  int _rewardedAdFailures = 0;
+  int _spinWheelAdFailures = 0;
+  int _scratchCardAdFailures = 0;
+  static const int _maxFailuresBeforeDisable =
+      3; // Disable after 3 consecutive failures
   bool _isLoadingAppOpenAd = false;
   bool _isShowingAppOpenAd = false;
   bool _isLoadingInterstitialAd = false;
@@ -61,11 +69,23 @@ class AdsService {
     if (_sdkInitialized || !_isMobileAdsSupported) {
       return;
     }
-    await MobileAds.instance.initialize();
-    _sdkInitialized = true;
-    _loadAppOpenAd();
-    _loadSpinWheelAd();
-    _loadScratchCardAd();
+
+    try {
+      // Initialize Mobile Ads SDK
+      // Note: Test device IDs can be found in logcat under the tag "Ads"
+      await MobileAds.instance.initialize();
+      _sdkInitialized = true;
+
+      // Only attempt to load ads if not disabled
+      if (!_adsDisabled) {
+        _loadAppOpenAd();
+        _loadSpinWheelAd();
+        _loadScratchCardAd();
+      }
+    } catch (e) {
+      debugPrint('Error initializing ads: $e');
+      _adsDisabled = true;
+    }
   }
 
   BannerAd? createHomeBannerAd({
@@ -93,7 +113,7 @@ class AdsService {
   }
 
   Future<bool> showAppOpenIfAvailable({required String placement}) async {
-    if (!_isMobileAdsSupported) {
+    if (!_isMobileAdsSupported || _adsDisabled) {
       return false;
     }
     await initialize();
@@ -132,12 +152,22 @@ class AdsService {
       },
     );
 
-    ad.show();
+    try {
+      ad.show();
+    } catch (e) {
+      debugPrint('Error showing app open ad: $e');
+      ad.dispose();
+      _isShowingAppOpenAd = false;
+      _loadAppOpenAd();
+      if (!shownCompleter.isCompleted) {
+        shownCompleter.complete(false);
+      }
+    }
     return shownCompleter.future;
   }
 
   Future<bool> showInterstitial({required String placement}) async {
-    if (!_isMobileAdsSupported) {
+    if (!_isMobileAdsSupported || _adsDisabled) {
       return false;
     }
     await initialize();
@@ -179,7 +209,17 @@ class AdsService {
       },
     );
 
-    ad.show();
+    try {
+      ad.show();
+    } catch (e) {
+      debugPrint('Error showing interstitial ad: $e');
+      ad.dispose();
+      _isShowingInterstitialAd = false;
+      _loadInterstitialAd();
+      if (!shownCompleter.isCompleted) {
+        shownCompleter.complete(false);
+      }
+    }
     return shownCompleter.future;
   }
 
@@ -187,7 +227,7 @@ class AdsService {
     required String placement,
     required int rewardCoins,
   }) async {
-    if (!_isMobileAdsSupported) {
+    if (!_isMobileAdsSupported || _adsDisabled) {
       return null;
     }
     await initialize();
@@ -227,13 +267,23 @@ class AdsService {
       },
     );
 
-    ad.show(
-      onUserEarnedReward: (_, RewardItem reward) {
-        _rewardedShown += 1;
-        earnedReward = rewardCoins;
-        debugPrint('Rewarded ad at $placement. Reward: $rewardCoins');
-      },
-    );
+    try {
+      ad.show(
+        onUserEarnedReward: (_, RewardItem reward) {
+          _rewardedShown += 1;
+          earnedReward = rewardCoins;
+          debugPrint('Rewarded ad at $placement. Reward: $rewardCoins');
+        },
+      );
+    } catch (e) {
+      debugPrint('Error showing rewarded ad: $e');
+      ad.dispose();
+      _isShowingRewardedAd = false;
+      _loadRewardedAd();
+      if (!rewardCompleter.isCompleted) {
+        rewardCompleter.complete(null);
+      }
+    }
 
     return rewardCompleter.future;
   }
@@ -242,7 +292,7 @@ class AdsService {
     required String placement,
     int bonusCoins = 40,
   }) async {
-    if (!_isMobileAdsSupported) {
+    if (!_isMobileAdsSupported || _adsDisabled) {
       return null;
     }
     await initialize();
@@ -284,15 +334,25 @@ class AdsService {
       },
     );
 
-    ad.show(
-      onUserEarnedReward: (_, RewardItem reward) {
-        _rewardedShown += 1;
-        earnedReward = bonusCoins;
-        debugPrint(
-          'Spin wheel ad reward earned at $placement. Bonus: $bonusCoins',
-        );
-      },
-    );
+    try {
+      ad.show(
+        onUserEarnedReward: (_, RewardItem reward) {
+          _rewardedShown += 1;
+          earnedReward = bonusCoins;
+          debugPrint(
+            'Spin wheel ad reward earned at $placement. Bonus: $bonusCoins',
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error showing spin wheel ad: $e');
+      ad.dispose();
+      _isShowingSpinWheelAd = false;
+      _loadSpinWheelAd();
+      if (!rewardCompleter.isCompleted) {
+        rewardCompleter.complete(null);
+      }
+    }
 
     return rewardCompleter.future;
   }
@@ -301,7 +361,7 @@ class AdsService {
     required String placement,
     int bonusCoins = 40,
   }) async {
-    if (!_isMobileAdsSupported) {
+    if (!_isMobileAdsSupported || _adsDisabled) {
       return null;
     }
     await initialize();
@@ -343,15 +403,25 @@ class AdsService {
       },
     );
 
-    ad.show(
-      onUserEarnedReward: (_, RewardItem reward) {
-        _rewardedShown += 1;
-        earnedReward = bonusCoins;
-        debugPrint(
-          'Scratch card ad reward earned at $placement. Bonus: $bonusCoins',
-        );
-      },
-    );
+    try {
+      ad.show(
+        onUserEarnedReward: (_, RewardItem reward) {
+          _rewardedShown += 1;
+          earnedReward = bonusCoins;
+          debugPrint(
+            'Scratch card ad reward earned at $placement. Bonus: $bonusCoins',
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error showing scratch card ad: $e');
+      ad.dispose();
+      _isShowingScratchCardAd = false;
+      _loadScratchCardAd();
+      if (!rewardCompleter.isCompleted) {
+        rewardCompleter.complete(null);
+      }
+    }
 
     return rewardCompleter.future;
   }
@@ -400,7 +470,8 @@ class AdsService {
     if (!_isMobileAdsSupported ||
         _isLoadingAppOpenAd ||
         _hasValidAppOpenAd ||
-        _isShowingAppOpenAd) {
+        _isShowingAppOpenAd ||
+        _adsDisabled) {
       return;
     }
 
@@ -413,10 +484,18 @@ class AdsService {
           _isLoadingAppOpenAd = false;
           _appOpenAd = ad;
           _appOpenLoadedAt = DateTime.now();
+          _appOpenAdFailures = 0; // Reset on successful load
         },
         onAdFailedToLoad: (LoadAdError error) {
           _isLoadingAppOpenAd = false;
-          debugPrint('App open ad failed to load: $error');
+          _appOpenAdFailures++;
+          debugPrint(
+            'App open ad failed to load (${_appOpenAdFailures}/$_maxFailuresBeforeDisable): $error',
+          );
+          if (_appOpenAdFailures >= _maxFailuresBeforeDisable) {
+            _adsDisabled = true;
+            debugPrint('Ads disabled due to repeated failures');
+          }
         },
       ),
     );
@@ -426,7 +505,8 @@ class AdsService {
     if (!_isMobileAdsSupported ||
         _isLoadingInterstitialAd ||
         _hasValidInterstitialAd ||
-        _isShowingInterstitialAd) {
+        _isShowingInterstitialAd ||
+        _adsDisabled) {
       return;
     }
 
@@ -439,10 +519,18 @@ class AdsService {
           _isLoadingInterstitialAd = false;
           _interstitialAd = ad;
           _interstitialAdLoadedAt = DateTime.now();
+          _interstitialAdFailures = 0; // Reset on successful load
         },
         onAdFailedToLoad: (LoadAdError error) {
           _isLoadingInterstitialAd = false;
-          debugPrint('Interstitial ad failed to load: $error');
+          _interstitialAdFailures++;
+          debugPrint(
+            'Interstitial ad failed to load (${_interstitialAdFailures}/$_maxFailuresBeforeDisable): $error',
+          );
+          if (_interstitialAdFailures >= _maxFailuresBeforeDisable) {
+            _adsDisabled = true;
+            debugPrint('Ads disabled due to repeated failures');
+          }
         },
       ),
     );
@@ -452,7 +540,8 @@ class AdsService {
     if (!_isMobileAdsSupported ||
         _isLoadingRewardedAd ||
         _hasValidRewardedAd ||
-        _isShowingRewardedAd) {
+        _isShowingRewardedAd ||
+        _adsDisabled) {
       return;
     }
 
@@ -465,10 +554,18 @@ class AdsService {
           _isLoadingRewardedAd = false;
           _rewardedAd = ad;
           _rewardedAdLoadedAt = DateTime.now();
+          _rewardedAdFailures = 0; // Reset on successful load
         },
         onAdFailedToLoad: (LoadAdError error) {
           _isLoadingRewardedAd = false;
-          debugPrint('Rewarded ad failed to load: $error');
+          _rewardedAdFailures++;
+          debugPrint(
+            'Rewarded ad failed to load (${_rewardedAdFailures}/$_maxFailuresBeforeDisable): $error',
+          );
+          if (_rewardedAdFailures >= _maxFailuresBeforeDisable) {
+            _adsDisabled = true;
+            debugPrint('Ads disabled due to repeated failures');
+          }
         },
       ),
     );
@@ -478,7 +575,8 @@ class AdsService {
     if (!_isMobileAdsSupported ||
         _isLoadingSpinWheelAd ||
         _hasValidSpinWheelAd ||
-        _isShowingSpinWheelAd) {
+        _isShowingSpinWheelAd ||
+        _adsDisabled) {
       return;
     }
 
@@ -491,11 +589,19 @@ class AdsService {
           _isLoadingSpinWheelAd = false;
           _spinWheelAd = ad;
           _spinWheelAdLoadedAt = DateTime.now();
+          _spinWheelAdFailures = 0; // Reset on successful load
           debugPrint('Spin wheel ad loaded successfully');
         },
         onAdFailedToLoad: (LoadAdError error) {
           _isLoadingSpinWheelAd = false;
-          debugPrint('Spin wheel ad failed to load: $error');
+          _spinWheelAdFailures++;
+          debugPrint(
+            'Spin wheel ad failed to load (${_spinWheelAdFailures}/$_maxFailuresBeforeDisable): $error',
+          );
+          if (_spinWheelAdFailures >= _maxFailuresBeforeDisable) {
+            _adsDisabled = true;
+            debugPrint('Ads disabled due to repeated failures');
+          }
         },
       ),
     );
@@ -505,7 +611,8 @@ class AdsService {
     if (!_isMobileAdsSupported ||
         _isLoadingScratchCardAd ||
         _hasValidScratchCardAd ||
-        _isShowingScratchCardAd) {
+        _isShowingScratchCardAd ||
+        _adsDisabled) {
       return;
     }
 
@@ -518,11 +625,19 @@ class AdsService {
           _isLoadingScratchCardAd = false;
           _scratchCardAd = ad;
           _scratchCardAdLoadedAt = DateTime.now();
+          _scratchCardAdFailures = 0; // Reset on successful load
           debugPrint('Scratch card ad loaded successfully');
         },
         onAdFailedToLoad: (LoadAdError error) {
           _isLoadingScratchCardAd = false;
-          debugPrint('Scratch card ad failed to load: $error');
+          _scratchCardAdFailures++;
+          debugPrint(
+            'Scratch card ad failed to load (${_scratchCardAdFailures}/$_maxFailuresBeforeDisable): $error',
+          );
+          if (_scratchCardAdFailures >= _maxFailuresBeforeDisable) {
+            _adsDisabled = true;
+            debugPrint('Ads disabled due to repeated failures');
+          }
         },
       ),
     );

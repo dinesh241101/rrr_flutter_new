@@ -28,5 +28,17 @@ class MockGames {
       description: 'Test memory speed and accuracy for bigger rewards.',
       baseReward: 18,
     ),
+    GameMode(
+      id: 'teen_patti',
+      name: 'Teen Patti',
+      description: 'Classic card game. Place bets and beat the dealer.',
+      baseReward: 25,
+    ),
+    GameMode(
+      id: 'mines_blast',
+      name: 'Mines Blast',
+      description: 'Reveal tiles and avoid mines for exponential rewards.',
+      baseReward: 22,
+    ),
   ];
 }

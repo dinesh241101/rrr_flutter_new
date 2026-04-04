@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:rrr_flutter_new/core/supabase_client.dart'
     show SupabaseClientManager;
 
@@ -44,20 +48,29 @@ class WheelReward {
 
 class WheelRewardsRepository {
   static Future<List<WheelReward>> getActiveRewards() async {
+    if (!SupabaseClientManager.isInitialized) return _getDefaultRewards();
+    if (!SupabaseClientManager.isConnected) return _getDefaultRewards();
+
     try {
       final response = await SupabaseClientManager.client
           .from('wheel_rewards')
           .select()
           .eq('is_active', true)
-          .order('probability', ascending: false);
+          .order('probability', ascending: false)
+          .timeout(const Duration(seconds: 15));
 
-      if (response is List) {
-        return (response).map((item) => WheelReward.fromMap(item)).toList();
-      }
-      return [];
+      return (response as List)
+          .map((item) => WheelReward.fromMap(item))
+          .toList();
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout fetching wheel rewards: $e');
+      return _getDefaultRewards();
+    } on SocketException catch (e) {
+      debugPrint('Network error fetching wheel rewards: $e');
+      return _getDefaultRewards();
     } catch (e) {
-      print('Error fetching wheel rewards: $e');
-      return _getDefaultRewards(); // Fallback to defaults
+      debugPrint('Error fetching wheel rewards: $e');
+      return _getDefaultRewards();
     }
   }
 
@@ -136,29 +149,44 @@ class WheelRewardsRepository {
     required int coinsEarned,
     required String source, // 'spin_wheel', 'scratch_card', 'daily_bonus', etc.
   }) async {
+    if (!SupabaseClientManager.isInitialized) return false;
+    if (!SupabaseClientManager.isConnected) return false;
+
     try {
-      await SupabaseClientManager.client.from('coin_transactions').insert({
-        'user_id': userId,
-        'amount': coinsEarned,
-        'transaction_type': 'reward',
-        'source': source,
-        'related_reward_id': rewardId,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'description': 'Reward claimed from $source',
-      });
+      await SupabaseClientManager.client
+          .from('coin_transactions')
+          .insert({
+            'user_id': userId,
+            'amount': coinsEarned,
+            'transaction_type': 'reward',
+            'source': source,
+            'related_reward_id': rewardId,
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'description': 'Reward claimed from $source',
+          })
+          .timeout(const Duration(seconds: 10));
 
       // Also update wheel_reward_claims table for analytics
-      await SupabaseClientManager.client.from('wheel_reward_claims').insert({
-        'user_id': userId,
-        'reward_id': rewardId,
-        'coins_earned': coinsEarned,
-        'source': source,
-        'claimed_at': DateTime.now().toIso8601String(),
-      });
+      await SupabaseClientManager.client
+          .from('wheel_reward_claims')
+          .insert({
+            'user_id': userId,
+            'reward_id': rewardId,
+            'coins_earned': coinsEarned,
+            'source': source,
+            'claimed_at': DateTime.now().toIso8601String(),
+          })
+          .timeout(const Duration(seconds: 10));
 
       return true;
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout submitting reward claim: $e');
+      return false;
+    } on SocketException catch (e) {
+      debugPrint('Network error submitting reward claim: $e');
+      return false;
     } catch (e) {
-      print('Error submitting reward claim: $e');
+      debugPrint('Error submitting reward claim: $e');
       return false;
     }
   }
@@ -167,6 +195,9 @@ class WheelRewardsRepository {
     required String userId,
     String? source,
   }) async {
+    if (!SupabaseClientManager.isInitialized) return 0;
+    if (!SupabaseClientManager.isConnected) return 0;
+
     try {
       var query = SupabaseClientManager.client
           .from('wheel_reward_claims')
@@ -177,10 +208,16 @@ class WheelRewardsRepository {
         query = query.eq('source', source);
       }
 
-      final response = await query;
+      final response = await query.timeout(const Duration(seconds: 15));
       return (response as List).length;
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout fetching reward claims count: $e');
+      return 0;
+    } on SocketException catch (e) {
+      debugPrint('Network error fetching reward claims count: $e');
+      return 0;
     } catch (e) {
-      print('Error fetching reward claims count: $e');
+      debugPrint('Error fetching reward claims count: $e');
       return 0;
     }
   }
@@ -189,6 +226,9 @@ class WheelRewardsRepository {
     required String userId,
     int limit = 10,
   }) async {
+    if (!SupabaseClientManager.isInitialized) return [];
+    if (!SupabaseClientManager.isConnected) return [];
+
     try {
       final response = await SupabaseClientManager.client
           .from('coin_transactions')
@@ -196,14 +236,18 @@ class WheelRewardsRepository {
           .eq('user_id', userId)
           .eq('transaction_type', 'reward')
           .order('timestamp', ascending: false)
-          .limit(limit);
+          .limit(limit)
+          .timeout(const Duration(seconds: 15));
 
-      if (response is List) {
-        return List<Map<String, dynamic>>.from(response);
-      }
+      return List<Map<String, dynamic>>.from(response as List);
+    } on TimeoutException catch (e) {
+      debugPrint('Timeout fetching reward history: $e');
+      return [];
+    } on SocketException catch (e) {
+      debugPrint('Network error fetching reward history: $e');
       return [];
     } catch (e) {
-      print('Error fetching reward history: $e');
+      debugPrint('Error fetching reward history: $e');
       return [];
     }
   }

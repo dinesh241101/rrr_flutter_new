@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
 import 'package:rrr_flutter_new/core/constants/app_values.dart';
+import 'package:rrr_flutter_new/core/neon_theme.dart';
 import 'package:rrr_flutter_new/data/mock_games.dart';
 import 'package:rrr_flutter_new/providers/navigation_provider.dart';
+import 'package:rrr_flutter_new/providers/profile_provider.dart';
 import 'package:rrr_flutter_new/providers/session_provider.dart';
 import 'package:rrr_flutter_new/providers/wallet_provider.dart';
 import 'package:rrr_flutter_new/screens/games/game_play_screen.dart';
 import 'package:rrr_flutter_new/services/ads_service.dart';
 import 'package:rrr_flutter_new/widgets/featured_game_card.dart';
+import 'package:rrr_flutter_new/widgets/responsive_button.dart';
+import 'package:rrr_flutter_new/widgets/responsive_text.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,14 +21,20 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   BannerAd? _bannerAd;
   bool _isBannerLoaded = false;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
     _loadBannerAd();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
   }
 
   void _loadBannerAd() {
@@ -62,152 +72,290 @@ class _HomeScreenState extends State<HomeScreen> {
       source: 'Rewarded Ad',
     );
     context.read<SessionProvider>().trackAdSeen();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Rewarded ad complete. +$reward coins added.')),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Rewarded ad complete. +$reward coins added.'),
+          backgroundColor: NeonTheme.neonLime,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
     _bannerAd?.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<WalletProvider, SessionProvider>(
+    return Consumer3<ProfileProvider, WalletProvider, SessionProvider>(
       builder:
           (
             BuildContext context,
+            ProfileProvider profile,
             WalletProvider wallet,
             SessionProvider session,
             _,
           ) {
             final int sessionMinutes = session.sessionDuration.inMinutes;
-            return Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
+            final String userName = profile.profile?.username ?? 'User';
+            return Container(
+              color: NeonTheme.darkBg,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        /// WELCOME SECTION WITH NEON GLOW
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20),
+                            gradient: NeonTheme.rainbowNeonGradient,
+                            boxShadow: [
+                              BoxShadow(
+                                color: NeonTheme.neonCyan.withOpacity(0.4),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
+                              BoxShadow(
+                                color: NeonTheme.neonPurple.withOpacity(0.2),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Welcome back, player',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ResponsiveHeading(
+                                'Welcome back, $userName!',
+                                color: Colors.white,
                               ),
-                              const SizedBox(height: 8),
-                              Text('Coins: ${wallet.coins}'),
-                              Text(
-                                'Ads watched this session: ${session.adsSeenThisSession}',
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  _buildStatItem(
+                                    'Coins',
+                                    wallet.coins.toString(),
+                                    NeonTheme.neonLime,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  _buildStatItem(
+                                    'Session',
+                                    '${sessionMinutes}m',
+                                    NeonTheme.neonCyan,
+                                  ),
+                                  const SizedBox(width: 16),
+                                  _buildStatItem(
+                                    'Ads',
+                                    session.adsSeenThisSession.toString(),
+                                    NeonTheme.neonPink,
+                                  ),
+                                ],
                               ),
-                              Text('Session time: ${sessionMinutes}m'),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Card(
-                        color: Theme.of(context).colorScheme.secondaryContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
+                        const SizedBox(height: 20),
+
+                        /// AD BONUS SECTION
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: NeonTheme.neonPink,
+                              width: 2,
+                            ),
+                            color: NeonTheme.neonPink.withOpacity(0.08),
+                            boxShadow: NeonTheme.neonPinkShadow,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Expanded(
-                                child: Text(
-                                  'Watch a rewarded ad for instant bonus coins.',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.play_circle_outline,
+                                    color: NeonTheme.neonPink,
+                                    size: 32,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        ResponsiveSubheading(
+                                          'Earn Bonus Coins',
+                                          color: NeonTheme.neonPink,
+                                        ),
+                                        ResponsiveCaption(
+                                          'Watch an ad for instant rewards',
+                                          color: NeonTheme.textMuted,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ResponsiveButton(
+                                  label: 'Watch Now',
+                                  onPressed: () => _showRewardedAd(context),
+                                  backgroundColor: NeonTheme.neonPink,
+                                  textColor: NeonTheme.darkBg,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              FilledButton(
-                                onPressed: () => _showRewardedAd(context),
-                                child: const Text('Watch'),
-                              ),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Featured Games',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 10),
-                      FeaturedGameCard(
-                        game: MockGames.all.first,
-                        onPlay: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  GamePlayScreen(game: MockGames.all.first),
+                        const SizedBox(height: 24),
+
+                        /// FEATURED GAMES HEADER
+                        ResponsiveSubheading(
+                          'Featured Games',
+                          color: NeonTheme.neonCyan,
+                        ),
+                        const SizedBox(height: 12),
+
+                        /// FEATURED GAMES
+                        FeaturedGameCard(
+                          game: MockGames.all.first,
+                          onPlay: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    GamePlayScreen(game: MockGames.all.first),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        FeaturedGameCard(
+                          game: MockGames.all[1],
+                          onPlay: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    GamePlayScreen(game: MockGames.all[1]),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+
+                        /// QUICK NAVIGATE
+                        ResponsiveSubheading(
+                          'Quick Navigate',
+                          color: NeonTheme.neonPurple,
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            _buildQuickNavButton(
+                              context,
+                              'Games',
+                              Icons.sports_esports,
+                              NeonTheme.neonCyan,
+                              1,
                             ),
-                          );
-                        },
-                      ),
-                      FeaturedGameCard(
-                        game: MockGames.all[1],
-                        onPlay: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  GamePlayScreen(game: MockGames.all[1]),
+                            _buildQuickNavButton(
+                              context,
+                              'Tournament',
+                              Icons.emoji_events,
+                              NeonTheme.neonPurple,
+                              2,
                             ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Quick Navigate',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                context.read<NavigationProvider>().setTab(1),
-                            icon: const Icon(Icons.sports_esports),
-                            label: const Text('Games'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                context.read<NavigationProvider>().setTab(2),
-                            icon: const Icon(Icons.emoji_events),
-                            label: const Text('Tournament'),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                context.read<NavigationProvider>().setTab(3),
-                            icon: const Icon(Icons.quiz),
-                            label: const Text('Quizistan'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (_isBannerLoaded && _bannerAd != null)
-                  SafeArea(
-                    top: false,
-                    child: SizedBox(
-                      width: _bannerAd!.size.width.toDouble(),
-                      height: _bannerAd!.size.height.toDouble(),
-                      child: AdWidget(ad: _bannerAd!),
+                            _buildQuickNavButton(
+                              context,
+                              'Quizistan',
+                              Icons.quiz,
+                              NeonTheme.neonPink,
+                              3,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                  if (_isBannerLoaded && _bannerAd != null)
+                    SafeArea(
+                      top: false,
+                      child: Container(
+                        color: NeonTheme.darkBg2,
+                        padding: const EdgeInsets.all(8),
+                        child: SizedBox(
+                          width: _bannerAd!.size.width.toDouble(),
+                          height: _bannerAd!.size.height.toDouble(),
+                          child: AdWidget(ad: _bannerAd!),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             );
           },
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withOpacity(0.1),
+          border: Border.all(color: color, width: 1.5),
+        ),
+        child: Column(
+          children: [
+            ResponsiveCaption(label, color: Colors.white70),
+            const SizedBox(height: 6),
+            ResponsiveBody(value, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickNavButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    int tabIndex,
+  ) {
+    return GestureDetector(
+      onTap: () => context.read<NavigationProvider>().setTab(tabIndex),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color, width: 2),
+          color: color.withOpacity(0.1),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.3), blurRadius: 10)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            ResponsiveBody(label, color: color),
+          ],
+        ),
+      ),
     );
   }
 }

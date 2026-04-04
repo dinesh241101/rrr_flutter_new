@@ -16,6 +16,7 @@ import 'package:rrr_flutter_new/services/notifications_service.dart';
 import 'package:rrr_flutter_new/widgets/app_drawer.dart';
 import 'package:rrr_flutter_new/widgets/coin_balance_chip.dart';
 import 'package:rrr_flutter_new/widgets/daily_bonus_dialog.dart';
+import 'package:rrr_flutter_new/screens/profile/profile_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});

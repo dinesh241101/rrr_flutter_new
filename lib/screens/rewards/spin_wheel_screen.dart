@@ -57,69 +57,83 @@ class _SpinWheelScreenState extends State<SpinWheelScreen>
   Future<void> _spinWheel() async {
     if (isSpinning || rewards.isEmpty) return;
 
-    // Show ad request first
-    final adsService = AdsService.instance;
-    final adReward = await adsService.showSpinWheelRewarded(
-      placement: 'spin_wheel_bonus',
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      isSpinning = true;
-      showRewardResult = false;
-    });
-
-    // Select a random reward
-    final reward = await WheelRewardsRepository.selectRandomReward();
-
-    if (reward == null) {
-      setState(() {
-        isSpinning = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Error selecting reward')));
-      }
-      return;
-    }
-
-    // Animate the spin
-    final randomSpins = math.Random().nextInt(5) + 3;
-    final spinAngle =
-        (randomSpins * 2 * math.pi) +
-        ((rewards.indexOf(reward) / rewards.length) * 2 * math.pi);
-
-    await _spinController.animateTo(
-      spinAngle,
-      duration: const Duration(seconds: 5),
-      curve: Curves.decelerate,
-    );
-
-    setState(() {
-      selectedReward = reward;
-      isSpinning = false;
-      showRewardResult = true;
-    });
-
-    // Record the reward claim
-    final profileProvider = context.read<ProfileProvider>();
-    if (profileProvider.isLoggedIn) {
-      final success = await WheelRewardsRepository.submitRewardClaim(
-        userId: profileProvider.profile!.id,
-        rewardId: reward.id,
-        coinsEarned:
-            reward.coinReward +
-            (adReward ?? 0), // Add ad reward bonus if available
-        source: 'spin_wheel',
+    try {
+      // Show ad request first
+      final adsService = AdsService.instance;
+      final adReward = await adsService.showSpinWheelRewarded(
+        placement: 'spin_wheel_bonus',
       );
 
-      if (success) {
-        // Update wallet
-        context.read<WalletProvider>().addCoins(
-          amount: reward.coinReward + (adReward ?? 0),
-          source: 'Spin Wheel',
+      if (!mounted) return;
+
+      setState(() {
+        isSpinning = true;
+        showRewardResult = false;
+      });
+
+      // Select a random reward
+      final reward = await WheelRewardsRepository.selectRandomReward();
+
+      if (reward == null) {
+        setState(() {
+          isSpinning = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Error selecting reward')),
+          );
+        }
+        return;
+      }
+
+      // Animate the spin
+      final randomSpins = math.Random().nextInt(5) + 3;
+      final spinAngle =
+          (randomSpins * 2 * math.pi) +
+          ((rewards.indexOf(reward) / rewards.length) * 2 * math.pi);
+
+      await _spinController.animateTo(
+        spinAngle,
+        duration: const Duration(seconds: 5),
+        curve: Curves.decelerate,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        selectedReward = reward;
+        isSpinning = false;
+        showRewardResult = true;
+      });
+
+      // Record the reward claim
+      final profileProvider = context.read<ProfileProvider>();
+      if (profileProvider.isLoggedIn) {
+        final success = await WheelRewardsRepository.submitRewardClaim(
+          userId: profileProvider.profile!.id,
+          rewardId: reward.id,
+          coinsEarned:
+              reward.coinReward +
+              (adReward ?? 0), // Add ad reward bonus if available
+          source: 'spin_wheel',
+        );
+
+        if (success && mounted) {
+          // Update wallet
+          context.read<WalletProvider>().addCoins(
+            amount: reward.coinReward + (adReward ?? 0),
+            source: 'Spin Wheel',
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in spin wheel: $e');
+      if (mounted) {
+        setState(() {
+          isSpinning = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error spinning wheel: ${e.toString()}')),
         );
       }
     }
