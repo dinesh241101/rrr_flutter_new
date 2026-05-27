@@ -51,7 +51,7 @@ dependencies:
   device_info_plus: ^11.5.0
   
   # Supabase for backend
-  supabase_flutter: ^1.10.0
+  supabase_flutter: ^2.12.4
   
   # Responsive design
   responsive_sizer: ^3.2.0

@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rrr_flutter_new/core/constants/app_values.dart';
-import 'package:rrr_flutter_new/core/responsive_helper.dart';
+import 'package:rrr_flutter_new/core/theme/app_theme.dart';
 import 'package:rrr_flutter_new/models/supabase_models.dart';
-import 'package:rrr_flutter_new/providers/quiz_provider.dart';
-import 'package:rrr_flutter_new/providers/session_provider.dart';
+import 'package:rrr_flutter_new/data/mock_quiz.dart';
 import 'package:rrr_flutter_new/providers/wallet_provider.dart';
-import 'package:rrr_flutter_new/services/ads_service.dart';
-import 'package:rrr_flutter_new/services/quizistan_repository.dart';
-import 'package:rrr_flutter_new/widgets/responsive_text.dart';
+import 'package:rrr_flutter_new/screens/quizistan/quiz_play_screen.dart';
 
 class QuizistanScreen extends StatefulWidget {
   const QuizistanScreen({super.key});
@@ -18,341 +14,278 @@ class QuizistanScreen extends StatefulWidget {
 }
 
 class _QuizistanScreenState extends State<QuizistanScreen> {
-  bool _isListView = false;
-  late Future<List<QuizistanQuiz>> _quizzesFuture;
+  String _selectedCategory = 'All';
 
-  @override
-  void initState() {
-    super.initState();
-    _quizzesFuture = QuizistanRepository.getActiveQuizzes();
-  }
+  final List<String> _categories = ['All', 'General', 'Sports', 'Movies', 'Sci'];
 
-  Future<void> _handleAnswer(BuildContext context, int optionIndex) async {
-    final QuizProvider quiz = context.read<QuizProvider>();
-    final bool correct = quiz.answerCurrent(optionIndex);
-    if (correct) {
-      context.read<WalletProvider>().addCoins(
-        amount: AppValues.quizCorrectAnswerReward,
-        source: 'Quiz correct answer',
+  final List<QuizistanQuiz> _quizzes = [
+    QuizistanQuiz(
+      id: 'gk',
+      title: 'General Knowledge',
+      description: 'Test your broad knowledge.',
+      genre: 'General',
+      quizType: 'general',
+      totalQuestions: 5,
+      entryFee: 10,
+      coinsPerCorrect: 20,
+      isActive: true,
+      timePerQuestion: 15,
+      createdAt: DateTime.now(),
+    ),
+    QuizistanQuiz(
+      id: 'sports',
+      title: 'Sports Quiz',
+      description: 'Football, Cricket, Tennis and more.',
+      genre: 'Sports',
+      quizType: 'sports',
+      totalQuestions: 5,
+      entryFee: 15,
+      coinsPerCorrect: 20,
+      isActive: true,
+      timePerQuestion: 15,
+      createdAt: DateTime.now(),
+    ),
+    QuizistanQuiz(
+      id: 'movies',
+      title: 'Movies Quiz',
+      description: 'Cinema, trivia, actors, and directors.',
+      genre: 'Movies',
+      quizType: 'movies',
+      totalQuestions: 5,
+      entryFee: 10,
+      coinsPerCorrect: 20,
+      isActive: true,
+      timePerQuestion: 15,
+      createdAt: DateTime.now(),
+    ),
+    QuizistanQuiz(
+      id: 'science',
+      title: 'Science Quiz',
+      description: 'Physics, chemistry, biology, space.',
+      genre: 'Sci',
+      quizType: 'science',
+      totalQuestions: 5,
+      entryFee: 20,
+      coinsPerCorrect: 24,
+      isActive: true,
+      timePerQuestion: 15,
+      createdAt: DateTime.now(),
+    ),
+    QuizistanQuiz(
+      id: 'current_affairs',
+      title: 'Current Affairs',
+      description: 'Global news and events.',
+      genre: 'General',
+      quizType: 'general',
+      totalQuestions: 5,
+      entryFee: 25,
+      coinsPerCorrect: 30,
+      isActive: true,
+      timePerQuestion: 15,
+      createdAt: DateTime.now(),
+    ),
+  ];
+
+  void _startQuiz(QuizistanQuiz quiz) {
+    final wallet = context.read<WalletProvider>();
+    if (wallet.coins < quiz.entryFee) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not enough coins!')),
       );
-    }
-
-    if (!context.mounted) {
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          correct
-              ? 'Correct! +${AppValues.quizCorrectAnswerReward} coins'
-              : 'Wrong answer. Try the next one.',
+
+    wallet.spendCoins(amount: quiz.entryFee, source: 'Quiz Entry: ${quiz.title}');
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuizPlayScreen(
+          quiz: quiz,
+          questions: MockQuizData.questions,
         ),
       ),
     );
-
-    if (!quiz.completed) {
-      return;
-    }
-
-    final bool shown = await AdsService.instance.showInterstitial(
-      placement: 'quiz_completed',
-    );
-    if (!context.mounted || !shown) {
-      return;
-    }
-    context.read<SessionProvider>().trackAdSeen();
-  }
-
-  void _startQuiz(BuildContext context, QuizistanQuiz quiz) {
-    final userCoins = context.read<WalletProvider>().coins;
-    if (userCoins < quiz.entryFee) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Not enough coins. Need ${quiz.entryFee}')),
-      );
-      return;
-    }
-
-    // Deduct entry fee
-    context.read<WalletProvider>().spendCoins(
-      amount: quiz.entryFee,
-      source: 'Quizistan entry fee',
-    );
-
-    // Navigate to quiz play screen or show quiz interface
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Starting quiz: ${quiz.title}')));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // View Toggle
-        Container(
-          padding: EdgeInsets.all(
-            ResponsiveHelper.getResponsivePadding(context, mobilePadding: 12),
-          ),
-          color: const Color(0xFF1A1F3A),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const ResponsiveSubheading('Available Quizzes'),
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => setState(() => _isListView = false),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: !_isListView
-                              ? Colors.blueAccent
-                              : Colors.white12,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.dashboard,
-                        color: !_isListView
-                            ? Colors.blueAccent
-                            : Colors.white70,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => setState(() => _isListView = true),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: _isListView
-                              ? Colors.blueAccent
-                              : Colors.white12,
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.list,
-                        color: _isListView ? Colors.blueAccent : Colors.white70,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    final coinBalance = context.watch<WalletProvider>().coins;
+
+    final filteredQuizzes = _selectedCategory == 'All'
+        ? _quizzes
+        : _quizzes.where((q) => q.genre == _selectedCategory).toList();
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+          onPressed: () => Navigator.pop(context),
         ),
-        Expanded(
-          child: FutureBuilder<List<QuizistanQuiz>>(
-            future: _quizzesFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFF00F0FF),
-                    ),
-                  ),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return Center(child: ResponsiveBody('Error loading quizzes'));
-              }
-
-              final quizzes = snapshot.data ?? [];
-
-              if (quizzes.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.quiz, size: 64, color: Colors.white30),
-                      const SizedBox(height: 16),
-                      const ResponsiveBody(
-                        'No quizzes available',
-                        color: Colors.white70,
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              if (!_isListView) {
-                return GridView.builder(
-                  padding: EdgeInsets.all(
-                    ResponsiveHelper.getResponsivePadding(context),
-                  ),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: ResponsiveHelper.isMobile(context) ? 2 : 3,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.8,
-                  ),
-                  itemCount: quizzes.length,
-                  itemBuilder: (context, index) {
-                    final quiz = quizzes[index];
-                    return _buildQuizTile(context, quiz);
-                  },
-                );
-              } else {
-                return ListView.builder(
-                  padding: EdgeInsets.all(
-                    ResponsiveHelper.getResponsivePadding(context),
-                  ),
-                  itemCount: quizzes.length,
-                  itemBuilder: (context, index) {
-                    final quiz = quizzes[index];
-                    return _buildQuizListItem(context, quiz);
-                  },
-                );
-              }
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuizTile(BuildContext context, QuizistanQuiz quiz) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12, width: 1),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.08),
-            Colors.white.withOpacity(0.02),
-          ],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(11),
-                ),
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.blueAccent.withOpacity(0.3),
-                    Colors.purpleAccent.withOpacity(0.3),
-                  ],
-                ),
-              ),
-              child: Center(
-                child: Icon(Icons.quiz, color: Colors.blueAccent, size: 40),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ResponsiveSubheading(quiz.title, maxLines: 2),
-                const SizedBox(height: 4),
-                ResponsiveCaption(
-                  '${quiz.totalQuestions} questions',
-                  color: Colors.white70,
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 4),
-                ResponsiveCaption(
-                  '${quiz.entryFee} coins entry',
-                  color: const Color(0xFF39FF14),
-                  maxLines: 1,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _startQuiz(context, quiz),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const ResponsiveCaption('Play', color: Colors.white),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuizListItem(BuildContext context, QuizistanQuiz quiz) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(
-        ResponsiveHelper.getResponsivePadding(context, mobilePadding: 12),
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12, width: 1),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.05),
-            Colors.white.withOpacity(0.02),
-          ],
-        ),
-      ),
-      child: Row(
-        children: [
+        title: const Text('All Quizzes'),
+        actions: [
           Container(
-            width: 60,
-            height: 60,
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              gradient: LinearGradient(
-                colors: [
-                  Colors.blueAccent.withOpacity(0.3),
-                  Colors.purpleAccent.withOpacity(0.3),
-                ],
-              ),
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.secondaryColor.withOpacity(0.5)),
             ),
-            child: Icon(Icons.quiz, color: Colors.blueAccent, size: 32),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                ResponsiveSubheading(quiz.title, maxLines: 1),
-                const SizedBox(height: 4),
-                ResponsiveCaption(
-                  '${quiz.totalQuestions} questions • ${quiz.entryFee} coins',
-                  maxLines: 1,
+                const Icon(Icons.monetization_on, color: AppTheme.secondaryColor, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  '$coinBalance',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => _startQuiz(context, quiz),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blueAccent,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 12),
+            // Categories Horizontal Scroll Bar
+            SizedBox(
+              height: 38,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final cat = _categories[index];
+                  final isSelected = cat == _selectedCategory;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedCategory = cat),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.primaryColor : AppTheme.cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? Colors.transparent : Colors.white10),
+                      ),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white70,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-            child: const Text('Play', style: TextStyle(fontSize: 12)),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            // Quiz list
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: filteredQuizzes.length,
+                itemBuilder: (context, index) {
+                  final quiz = filteredQuizzes[index];
+                  IconData icon = Icons.public_rounded;
+                  Color iconColor = Colors.purpleAccent;
+                  String activeCount = '1.2K+ Playing';
+
+                  if (quiz.genre == 'Sports') {
+                    icon = Icons.sports_soccer_rounded;
+                    iconColor = Colors.green;
+                    activeCount = '1.5K+ Playing';
+                  } else if (quiz.genre == 'Movies') {
+                    icon = Icons.movie_creation_rounded;
+                    iconColor = Colors.amber;
+                    activeCount = '900+ Playing';
+                  } else if (quiz.genre == 'Sci') {
+                    icon = Icons.science_rounded;
+                    iconColor = Colors.blue;
+                    activeCount = '350+ Playing';
+                  }
+
+                  return GestureDetector(
+                    onTap: () => _startQuiz(quiz),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: iconColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(icon, color: iconColor, size: 28),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  quiz.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.monetization_on, color: AppTheme.secondaryColor, size: 14),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Win ${quiz.coinsPerCorrect * quiz.totalQuestions}',
+                                      style: const TextStyle(
+                                        color: AppTheme.secondaryColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Entry: ${quiz.entryFee} Coins',
+                                      style: const TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      activeCount,
+                                      style: const TextStyle(
+                                        color: Colors.white30,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white30, size: 16),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

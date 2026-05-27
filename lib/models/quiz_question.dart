@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class QuizQuestion {
   const QuizQuestion({
     required this.id,

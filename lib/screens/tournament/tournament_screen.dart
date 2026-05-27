@@ -1,649 +1,308 @@
-import 'dart:math';
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rrr_flutter_new/providers/tournament_provider.dart';
+import 'package:rrr_flutter_new/core/theme/app_theme.dart';
 import 'package:rrr_flutter_new/providers/wallet_provider.dart';
-
-// Neon Color Palette
-class NeonColors {
-  static const Color cyan = Color(0xFF00F0FF);
-  static const Color magenta = Color(0xFFFF006E);
-  static const Color lime = Color(0xFF39FF14);
-  static const Color purple = Color(0xFFBD00FF);
-  static const Color darkBg = Color(0xFF0A0E27);
-  static const Color cardBg = Color(0xFF1A1F3A);
-  static const Color borderGlow = Color(0xFF00F0FF);
-  static const Color accentOrange = Color(0xFFFF6B35);
-  static const Color gold = Color(0xFFFFD700);
-}
 
 class TournamentScreen extends StatefulWidget {
   const TournamentScreen({super.key});
-
-  static const String _localPlayerId = 'local_device_player';
-  static const String _localPlayerName = 'You';
 
   @override
   State<TournamentScreen> createState() => _TournamentScreenState();
 }
 
-class _TournamentScreenState extends State<TournamentScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _pulseController;
+class _TournamentScreenState extends State<TournamentScreen> {
+  String _activeTab = 'Upcoming';
 
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat();
-  }
+  final List<Map<String, dynamic>> _upcomingTournaments = [
+    {
+      'id': 't1',
+      'title': 'MEGA QUIZ LEAGUE',
+      'prizePool': 5000,
+      'entryFee': 200,
+      'playersRegistered': 250,
+      'playersMax': 500,
+      'date': '12 May 2026',
+      'time': '05:00 PM',
+    },
+    {
+      'id': 't2',
+      'title': 'BATTLE OF CHAMPIONS',
+      'prizePool': 10000,
+      'entryFee': 500,
+      'playersRegistered': 120,
+      'playersMax': 300,
+      'date': '15 May 2026',
+      'time': '08:00 PM',
+    },
+    {
+      'id': 't3',
+      'title': 'WEEKEND QUIZ CUP',
+      'prizePool': 2500,
+      'entryFee': 50,
+      'playersRegistered': 300,
+      'playersMax': 500,
+      'date': '18 May 2026',
+      'time': '09:00 PM',
+    },
+  ];
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
+  final List<Map<String, dynamic>> _liveTournaments = [
+    {
+      'id': 't4',
+      'title': 'MIDWEEK SPEEDRUN',
+      'prizePool': 3000,
+      'entryFee': 100,
+      'playersRegistered': 180,
+      'playersMax': 200,
+      'date': 'Today',
+      'time': 'Ongoing',
+    },
+  ];
 
-  Future<void> _joinTournament(BuildContext context) async {
-    final TournamentProvider tournament = context.read<TournamentProvider>();
-    final WalletProvider wallet = context.read<WalletProvider>();
+  final List<Map<String, dynamic>> _completedTournaments = [
+    {
+      'id': 't5',
+      'title': 'CHAMPIONS LEAGUE V1',
+      'prizePool': 8000,
+      'entryFee': 300,
+      'playersRegistered': 400,
+      'playersMax': 400,
+      'date': '25 May 2026',
+      'time': 'Finished',
+    },
+  ];
 
-    if (tournament.joined) {
-      _showNeonSnackBar(context, 'Already joined this round.', NeonColors.cyan);
-      return;
-    }
+  void _joinTournament(Map<String, dynamic> tournament) {
+    final wallet = context.read<WalletProvider>();
+    final entryFee = tournament['entryFee'] as int;
 
-    final bool paid = wallet.spendCoins(
-      amount: tournament.entryFee,
-      source: 'Tournament entry',
-    );
-    if (!paid) {
-      _showNeonSnackBar(
-        context,
-        'Not enough coins for tournament entry.',
-        NeonColors.magenta,
+    if (wallet.coins < entryFee) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Not enough coins to join this tournament!')),
       );
       return;
     }
 
-    tournament.markJoined();
-    _showNeonSnackBar(
-      context,
-      'Entry confirmed. ${tournament.entryFee} coins deducted.',
-      NeonColors.lime,
-    );
-  }
-
-  Future<void> _submitMockScore(BuildContext context) async {
-    final TournamentProvider tournament = context.read<TournamentProvider>();
-    final int score = 600 + Random().nextInt(2600);
-    final String? error = await tournament.submitScore(
-      playerId: TournamentScreen._localPlayerId,
-      playerName: TournamentScreen._localPlayerName,
-      score: score,
-    );
-
-    if (!context.mounted) {
-      return;
-    }
-    if (error != null) {
-      _showNeonSnackBar(context, error, NeonColors.magenta);
-      return;
-    }
-
-    _showNeonSnackBar(context, 'Score submitted: $score', NeonColors.lime);
-  }
-
-  void _showNeonSnackBar(BuildContext context, String message, Color color) {
+    wallet.spendCoins(amount: entryFee, source: 'Tournament Entry: ${tournament['title']}');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: color.withOpacity(0.8),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: color, width: 1.5),
-        ),
-        margin: const EdgeInsets.all(16),
+        content: Text('Joined ${tournament['title']}! - $entryFee coins'),
+        backgroundColor: AppTheme.successColor,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            NeonColors.darkBg,
-            NeonColors.darkBg.withOpacity(0.8),
-            const Color(0xFF0F1535),
+    final List<Map<String, dynamic>> activeList = _activeTab == 'Upcoming'
+        ? _upcomingTournaments
+        : (_activeTab == 'Live' ? _liveTournaments : _completedTournaments);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tournaments'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Tabs Bar (Upcoming, Live, Completed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Row(
+                  children: ['Upcoming', 'Live', 'Completed'].map((tab) {
+                    final isSelected = tab == _activeTab;
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _activeTab = tab),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            tab,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white60,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            // Tournament list
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: activeList.length,
+                itemBuilder: (context, index) {
+                  final t = activeList[index];
+                  final playersReg = t['playersRegistered'] as int;
+                  final playersMax = t['playersMax'] as int;
+                  final fillPercent = playersReg / playersMax;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cardColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white10),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppTheme.cardColor,
+                          AppTheme.primaryColor.withOpacity(0.02),
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    t['title'] as String,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      letterSpacing: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.monetization_on, color: AppTheme.secondaryColor, size: 16),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Win ${t['prizePool']} Coins',
+                                        style: const TextStyle(
+                                          color: AppTheme.secondaryColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Trophy Icon Right
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withOpacity(0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.emoji_events_rounded,
+                                color: AppTheme.secondaryColor,
+                                size: 28,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                        const SizedBox(height: 14),
+
+                        // Capacity and details
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Entry Fee: ${t['entryFee']} Coins',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                            Text(
+                              'Players: $playersReg/$playersMax',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Progress bar for players capacity
+                        LinearProgressIndicator(
+                          value: fillPercent,
+                          backgroundColor: Colors.white10,
+                          color: AppTheme.primaryColor,
+                          borderRadius: BorderRadius.circular(4),
+                          minHeight: 4,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Time and Join Button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today_rounded, color: Colors.white30, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${t['date']} • ${t['time']}',
+                                  style: const TextStyle(color: Colors.white30, fontSize: 11),
+                                ),
+                              ],
+                            ),
+                            if (_activeTab == 'Upcoming')
+                              GestureDetector(
+                                onTap: () => _joinTournament(t),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.primaryColor.withOpacity(0.4),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Text(
+                                    'Join Now',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
-      child: Consumer<TournamentProvider>(
-        builder: (BuildContext context, TournamentProvider tournament, _) {
-          return RefreshIndicator(
-            onRefresh: tournament.loadLeaderboard,
-            color: NeonColors.cyan,
-            backgroundColor: NeonColors.cardBg,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Header with Prize Pool
-                _buildHeaderCard(tournament, context),
-                const SizedBox(height: 24),
-                // Leaderboard Title
-                Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 4,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [NeonColors.cyan, NeonColors.lime],
-                          ),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Leaderboard',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: NeonColors.cyan,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                            ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '(Top ${tournament.entries.length})',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: NeonColors.cyan.withOpacity(0.6),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Leaderboard Content
-                if (tournament.isLoading && tournament.entries.isEmpty)
-                  _buildLoadingState()
-                else if (tournament.entries.isEmpty)
-                  _buildEmptyState(context)
-                else
-                  ..._buildLeaderboardEntries(tournament, context),
-              ],
-            ),
-          );
-        },
-      ),
     );
-  }
-
-  Widget _buildHeaderCard(TournamentProvider tournament, BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: NeonColors.cyan.withOpacity(0.5), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: NeonColors.cyan.withOpacity(0.2),
-            blurRadius: 20,
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: NeonColors.purple.withOpacity(0.1),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  NeonColors.cardBg.withOpacity(0.6),
-                  NeonColors.cardBg.withOpacity(0.3),
-                ],
-              ),
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Prize Pool Row
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [NeonColors.gold, NeonColors.accentOrange],
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.emoji_events,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PRIZE POOL',
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: NeonColors.cyan.withOpacity(0.7),
-                                fontSize: 10,
-                                letterSpacing: 1.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${tournament.prizePool}',
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: NeonColors.gold,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                        Text(
-                          'coins',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: NeonColors.gold.withOpacity(0.7),
-                                fontSize: 10,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Divider(color: NeonColors.cyan.withOpacity(0.2), height: 1),
-                const SizedBox(height: 16),
-                // Entry Fee Row
-                Row(
-                  children: [
-                    Text(
-                      'Entry Fee',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: NeonColors.lime.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: NeonColors.lime.withOpacity(0.5),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        '${tournament.entryFee} coins',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: NeonColors.lime,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildNeonButton(
-                        label: tournament.joined ? 'JOINED' : 'JOIN TOURNAMENT',
-                        onPressed: tournament.joined
-                            ? null
-                            : () => _joinTournament(context),
-                        backgroundColor: NeonColors.lime,
-                        textColor: Colors.black,
-                        isEnabled: !tournament.joined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildNeonButton(
-                        label: tournament.isSubmitting
-                            ? 'SUBMITTING...'
-                            : 'SUBMIT SCORE',
-                        onPressed: tournament.isSubmitting
-                            ? null
-                            : () => _submitMockScore(context),
-                        backgroundColor: NeonColors.cyan,
-                        textColor: Colors.black,
-                        isEnabled: !tournament.isSubmitting,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNeonButton({
-    required String label,
-    required VoidCallback? onPressed,
-    required Color backgroundColor,
-    required Color textColor,
-    required bool isEnabled,
-  }) {
-    return Container(
-      decoration: isEnabled
-          ? BoxDecoration(
-              gradient: LinearGradient(
-                colors: [backgroundColor, backgroundColor.withOpacity(0.8)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: backgroundColor.withOpacity(0.4),
-                  blurRadius: 12,
-                  spreadRadius: 0,
-                ),
-              ],
-            )
-          : BoxDecoration(
-              color: backgroundColor.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: isEnabled ? onPressed : null,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isEnabled ? textColor : textColor.withOpacity(0.5),
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60),
-      child: Column(
-        children: [
-          ScaleTransition(
-            scale: Tween(begin: 0.8, end: 1.0).animate(
-              CurvedAnimation(
-                parent: _pulseController,
-                curve: Curves.easeInOut,
-              ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    NeonColors.cyan.withOpacity(0.3),
-                    NeonColors.purple.withOpacity(0.3),
-                  ],
-                ),
-                border: Border.all(color: NeonColors.cyan, width: 2),
-              ),
-              child: SizedBox(
-                width: 50,
-                height: 50,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation(NeonColors.cyan),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Loading Tournament Data',
-            style: TextStyle(
-              color: NeonColors.cyan.withOpacity(0.8),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 60),
-      child: Column(
-        children: [
-          Icon(
-            Icons.leaderboard_outlined,
-            size: 64,
-            color: NeonColors.cyan.withOpacity(0.4),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No Scores Yet',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: NeonColors.cyan.withOpacity(0.6),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Be the first to submit a score!',
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.white38),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildLeaderboardEntries(
-    TournamentProvider tournament,
-    BuildContext context,
-  ) {
-    return tournament.entries.asMap().entries.map((mapEntry) {
-      int index = mapEntry.key;
-      var entry = mapEntry.value;
-
-      // Medal colors for top 3
-      Color medalColor = Colors.grey;
-      if (entry.rank == 1) {
-        medalColor = NeonColors.gold;
-      } else if (entry.rank == 2) {
-        medalColor = const Color(0xFFC0C0C0);
-      } else if (entry.rank == 3) {
-        medalColor = const Color(0xFFCD7F32);
-      }
-
-      // Highlight color based on rank
-      Color highlightColor = entry.rank == 1
-          ? NeonColors.gold.withOpacity(0.15)
-          : entry.rank == 2
-          ? NeonColors.cyan.withOpacity(0.1)
-          : entry.rank == 3
-          ? NeonColors.magenta.withOpacity(0.1)
-          : Colors.transparent;
-
-      Color borderColor = entry.rank == 1
-          ? NeonColors.gold.withOpacity(0.4)
-          : entry.rank == 2
-          ? NeonColors.cyan.withOpacity(0.3)
-          : entry.rank == 3
-          ? NeonColors.magenta.withOpacity(0.3)
-          : NeonColors.cyan.withOpacity(0.15);
-
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor, width: 1.5),
-            boxShadow: entry.rank <= 3
-                ? [
-                    BoxShadow(
-                      color: medalColor.withOpacity(0.15),
-                      blurRadius: 12,
-                      spreadRadius: 0,
-                    ),
-                  ]
-                : [],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      NeonColors.cardBg.withOpacity(0.5),
-                      NeonColors.cardBg.withOpacity(0.2),
-                    ],
-                  ),
-                  color: highlightColor != Colors.transparent
-                      ? highlightColor
-                      : null,
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: entry.rank == 1
-                          ? LinearGradient(
-                              colors: [
-                                NeonColors.gold,
-                                NeonColors.accentOrange,
-                              ],
-                            )
-                          : entry.rank == 2
-                          ? LinearGradient(
-                              colors: [
-                                NeonColors.cyan,
-                                NeonColors.cyan.withOpacity(0.7),
-                              ],
-                            )
-                          : entry.rank == 3
-                          ? LinearGradient(
-                              colors: [NeonColors.magenta, NeonColors.purple],
-                            )
-                          : LinearGradient(
-                              colors: [
-                                NeonColors.purple.withOpacity(0.4),
-                                NeonColors.cyan.withOpacity(0.4),
-                              ],
-                            ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: medalColor.withOpacity(0.3),
-                          blurRadius: 8,
-                          spreadRadius: 0,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        '${entry.rank}',
-                        style: TextStyle(
-                          color: entry.rank <= 3 ? Colors.black : Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    entry.playerName,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '${entry.score}',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: entry.rank == 1
-                              ? NeonColors.gold
-                              : NeonColors.lime,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        'pts',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.white38,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }).toList();
   }
 }

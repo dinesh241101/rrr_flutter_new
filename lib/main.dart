@@ -10,7 +10,7 @@ Future<void> main() async {
   try {
     await SupabaseClientManager.initialize();
   } catch (e) {
-    print('Failed to initialize Supabase: $e');
+    debugPrint('Failed to initialize Supabase: $e');
   }
 
   // Initialize Ads
