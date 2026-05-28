@@ -3,9 +3,10 @@ import 'package:rrr_flutter_new/core/theme/app_theme.dart';
 import 'package:rrr_flutter_new/models/supabase_models.dart';
 import 'package:rrr_flutter_new/data/mock_quiz.dart';
 import 'package:rrr_flutter_new/screens/quizistan/quiz_play_screen.dart';
+import 'package:rrr_flutter_new/models/quiz_model.dart';
 
 class QuizResultScreen extends StatelessWidget {
-  final QuizistanQuiz quiz;
+  final QuizModel quiz;
   final int totalQuestions;
   final int correctAnswers;
   final int coinsEarned;
@@ -195,8 +196,7 @@ class QuizResultScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => QuizPlayScreen(
-                                quiz: quiz,
-                                questions: MockQuizData.questions,
+                                quiz: quiz, questions: [],
                               ),
                             ),
                           );

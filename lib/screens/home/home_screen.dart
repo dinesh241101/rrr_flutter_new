@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rrr_flutter_new/core/theme/app_theme.dart';
 import 'package:rrr_flutter_new/models/supabase_models.dart';
-import 'package:rrr_flutter_new/data/mock_quiz.dart';
 import 'package:rrr_flutter_new/providers/wallet_provider.dart';
 import 'package:rrr_flutter_new/providers/navigation_provider.dart';
 import 'package:rrr_flutter_new/screens/games/games_screen.dart';
 import 'package:rrr_flutter_new/screens/quizistan/quiz_play_screen.dart';
 import 'package:rrr_flutter_new/screens/quizistan/quizistan_screen.dart';
 import 'package:rrr_flutter_new/widgets/daily_bonus_dialog.dart';
+import 'package:rrr_flutter_new/models/quiz_model.dart';
+
+import '../../data/mock_quiz.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -95,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _startQuiz(QuizistanQuiz quiz) {
+  void _startQuiz(QuizModel quiz) {
     final wallet = context.read<WalletProvider>();
     if (wallet.coins < quiz.entryFee) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,8 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => QuizPlayScreen(
-          quiz: quiz,
-          questions: MockQuizData.questions,
+          quiz: quiz, questions: [],
         ),
       ),
     );
@@ -393,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Column(
           children: _fallbackQuizzes.map((quiz) {
             return GestureDetector(
-              onTap: () => _startQuiz(quiz),
+              onTap: () => _startQuiz(quiz as QuizModel),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),

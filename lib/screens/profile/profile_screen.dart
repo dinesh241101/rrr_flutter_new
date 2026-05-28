@@ -1,15 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rrr_flutter_new/core/theme/app_theme.dart';
-import 'package:rrr_flutter_new/providers/wallet_provider.dart';
-import 'package:rrr_flutter_new/providers/navigation_provider.dart';
-import 'package:rrr_flutter_new/screens/login/login_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProfileScreen extends StatelessWidget {
+import 'package:rrr_flutter_new/core/theme/app_theme.dart';
+import 'package:rrr_flutter_new/models/profile_model.dart';
+import 'package:rrr_flutter_new/providers/navigation_provider.dart';
+import 'package:rrr_flutter_new/providers/wallet_provider.dart';
+import 'package:rrr_flutter_new/screens/login/login_screen.dart';
+import 'package:rrr_flutter_new/services/profile_service.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  void _logout(BuildContext context) {
-    // Navigate back to login screen
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+
+  final profileService = ProfileService();
+
+  ProfileModel? profile;
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final data = await profileService.fetchProfile();
+
+      if (mounted) {
+        setState(() {
+          profile = data;
+          loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    await profileService.logout();
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -18,86 +55,116 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     final coinBalance = context.watch<WalletProvider>().coins;
+
+    if (loading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    final initials = (profile?.username ?? "RR")
+        .substring(0, 2)
+        .toUpperCase();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
         centerTitle: true,
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.white70),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings clicked')),
-              );
-            },
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          padding: const EdgeInsets.all(24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Avatar and Name Header
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.primaryColor, width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryColor.withOpacity(0.25),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const CircleAvatar(
-                        radius: 46,
-                        backgroundColor: AppTheme.cardColor,
-                        child: Text(
-                          'RS',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Rohit Sharma',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '+91 98765 43210',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white54,
-                      ),
+
+              /// AVATAR
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppTheme.primaryColor,
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      blurRadius: 20,
                     ),
                   ],
                 ),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: AppTheme.cardColor,
+                  backgroundImage: profile?.avatarUrl != null
+                      ? NetworkImage(profile!.avatarUrl!)
+                      : null,
+                  child: profile?.avatarUrl == null
+                      ? Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                      : null,
+                ),
               ),
-              const SizedBox(height: 28),
 
-              // Stats Row Container
+              const SizedBox(height: 16),
+
+              /// USERNAME + VERIFIED
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    profile?.username ?? "Guest User",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  if (profile?.isVerified == true)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 6),
+                      child: Icon(
+                        Icons.verified,
+                        color: Colors.blueAccent,
+                        size: 20,
+                      ),
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: 6),
+
+              /// MOBILE
+              Text(
+                profile?.mobileNumber != null
+                    ? "+91 ${profile!.mobileNumber}"
+                    : "No mobile linked",
+                style: const TextStyle(
+                  color: Colors.white54,
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              /// STATS
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppTheme.cardColor,
                   borderRadius: BorderRadius.circular(20),
@@ -106,64 +173,53 @@ class ProfileScreen extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatCol('Total Coins', '$coinBalance', AppTheme.secondaryColor),
-                    _buildStatDivider(),
-                    _buildStatCol('Total Won', '1,250', AppTheme.successColor),
-                    _buildStatDivider(),
-                    _buildStatCol('Tournaments', '12', Colors.blueAccent),
+                    _buildStat(
+                      "Coins",
+                      "$coinBalance",
+                      AppTheme.secondaryColor,
+                    ),
+                    _divider(),
+                    _buildStat(
+                      "Verified",
+                      profile?.isVerified == true ? "YES" : "NO",
+                      Colors.green,
+                    ),
+                    _divider(),
+                    _buildStat(
+                      "Games",
+                      "12",
+                      Colors.blueAccent,
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
 
-              // Navigation Tiles
-              _buildNavTile(
-                context,
-                icon: Icons.person_outline_rounded,
-                title: 'Personal Info',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Personal Info tapped')),
-                  );
-                },
+              const SizedBox(height: 30),
+
+              _tile(
+                icon: Icons.person_outline,
+                title: "Edit Profile",
+                onTap: () {},
               ),
-              _buildNavTile(
-                context,
-                icon: Icons.history_rounded,
-                title: 'Coin History',
+
+              _tile(
+                icon: Icons.history,
+                title: "Coin History",
                 onTap: () {
-                  // Switch tab to Wallet
                   context.read<NavigationProvider>().setTab(2);
                 },
               ),
-              _buildNavTile(
-                context,
-                icon: Icons.notifications_none_rounded,
-                title: 'Notifications',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notifications tapped')),
-                  );
-                },
+
+              _tile(
+                icon: Icons.security,
+                title: "Security",
+                onTap: () {},
               ),
-              _buildNavTile(
-                context,
-                icon: Icons.security_rounded,
-                title: 'Security & Privacy',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Security & Privacy tapped')),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildNavTile(
-                context,
-                icon: Icons.logout_rounded,
-                title: 'Logout',
-                titleColor: AppTheme.errorColor,
-                iconColor: AppTheme.errorColor,
-                showArrow: false,
+
+              _tile(
+                icon: Icons.logout,
+                title: "Logout",
+                color: AppTheme.errorColor,
                 onTap: () => _logout(context),
               ),
             ],
@@ -173,64 +229,64 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCol(String label, String value, Color valueColor) {
+  Widget _buildStat(String label, String value, Color color) {
     return Column(
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white54, fontSize: 11),
+          style: const TextStyle(
+            color: Colors.white54,
+            fontSize: 11,
+          ),
         ),
         const SizedBox(height: 6),
         Text(
           value,
           style: TextStyle(
-            color: valueColor,
-            fontSize: 18,
+            color: color,
             fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatDivider() {
+  Widget _divider() {
     return Container(
       width: 1,
-      height: 36,
-      color: Colors.white.withOpacity(0.08),
+      height: 35,
+      color: Colors.white10,
     );
   }
 
-  Widget _buildNavTile(
-    BuildContext context, {
+  Widget _tile({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
-    Color? titleColor,
-    Color? iconColor,
-    bool showArrow = true,
+    Color color = Colors.white,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppTheme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
       ),
       child: ListTile(
         onTap: onTap,
-        leading: Icon(icon, color: iconColor ?? Colors.white70),
+        leading: Icon(icon, color: color),
         title: Text(
           title,
           style: TextStyle(
-            color: titleColor ?? Colors.white,
+            color: color,
             fontWeight: FontWeight.w600,
-            fontSize: 14,
           ),
         ),
-        trailing: showArrow
-            ? const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white30, size: 14)
-            : null,
+        trailing: const Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 14,
+          color: Colors.white30,
+        ),
       ),
     );
   }

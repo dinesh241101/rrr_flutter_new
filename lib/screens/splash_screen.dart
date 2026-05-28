@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:rrr_flutter_new/core/constants/app_assets.dart';
+import 'package:rrr_flutter_new/screens/home/home_screen.dart';
 import 'package:rrr_flutter_new/screens/login/login_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -117,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen>
       _stopTimers();
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     });
   }
